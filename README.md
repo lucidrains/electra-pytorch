@@ -19,7 +19,7 @@ import torch
 from torch import nn
 from reformer_pytorch import ReformerLM
 
-from electra_pytorch.electra_pytorch import Electra
+from electra_pytorch import Electra
 
 # instantiate the generator and discriminator
 
