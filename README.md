@@ -34,8 +34,7 @@ discriminator = ReformerLM(
     num_tokens = 20000,
     dim = 512,
     depth = 2,
-    max_seq_len = 1024,
-    return_embeddings = True
+    max_seq_len = 1024
 )
 
 # weight tie the token and positional embeddings of generator and discriminator
@@ -43,21 +42,15 @@ discriminator = ReformerLM(
 generator.token_emb = discriminator.token_emb
 generator.pos_emb = discriminator.pos_emb
 
-# make sure discriminator outputs to a sigmoid (predicting replaced or original)
-
-discriminator_with_sigmoid = nn.Sequential(
-    discriminator,
-    nn.Linear(512, 1),
-    nn.Sigmoid()
-)
-
 # instantiate electra
 
 trainer = Electra(
     generator,
-    discriminator_with_sigmoid,
-    mask_token_id = 2,
-    mask_prob = 0.15
+    discriminator,
+    discr_dim = 512,            # the embedding dimension of the discriminator
+    discr_layer = 'reformer',   # the layer name in the discriminator, whose output would be used for predicting token is still the same or replaced
+    mask_token_id = 2,          # the token id reserved for masking
+    mask_prob = 0.15            # masking probability for masked language modeling
 )
 
 # train
@@ -66,6 +59,10 @@ data = torch.randint(0, 20000, (1, 1024))
 
 loss = trainer(data)
 loss.backward()
+
+# after much training, the discriminator should have improved
+
+torch.save(discriminator, f'./pretrained-model.pt')
 
 # after much training, the discriminator should have improved
 
