@@ -2,6 +2,8 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 
+# hidden layer extractor class, for magically adding adapter to language model to be pretrained
+
 class HiddenLayerExtractor(nn.Module):
     def __init__(self, net, layer = -2):
         super().__init__()
@@ -42,6 +44,8 @@ class HiddenLayerExtractor(nn.Module):
         assert hidden is not None, f'hidden layer {self.layer} never emitted an output'
         return hidden
 
+# main electra class
+
 class Electra(nn.Module):
     def __init__(
         self,
@@ -71,12 +75,15 @@ class Electra(nn.Module):
     def forward(self, input):
         b, t = input.shape
 
+        # generate mask for mlm pre-training of generator
         mask_prob = torch.zeros_like(input).float().uniform_(0, 1)
         mask = (mask_prob < self.mask_prob) & (input != self.pad_token_id)
 
+        # mask input with mask tokens, set inverse of mask to padding tokens for labels
         masked_input = input.masked_fill(mask, self.mask_token_id)
         gen_labels = input.masked_fill(~mask, self.pad_token_id)
 
+        # get generator output and get mlm loss
         logits = self.generator(masked_input)
 
         mlm_loss = F.cross_entropy(
@@ -85,20 +92,27 @@ class Electra(nn.Module):
             ignore_index = self.pad_token_id
         )
 
+        # use mask from before to select logits that need sampling
         mask_indices = torch.nonzero(mask, as_tuple=True)
         sample_logits = logits[mask_indices].softmax(dim=-1)
+
+        # sample
         sampled = torch.multinomial(sample_logits, 1)
 
+        # scatter the sampled values back to the input
         disc_input = input.clone()
         disc_input[mask_indices] = sampled.squeeze(-1)
 
-        disc_logits = self.discriminator(disc_input)
-
+        # generate discriminator labels, with replaced as True and original as False
         disc_labels = (input != disc_input).float()
+
+        # get discriminator predictions of replaced / original
+        disc_logits = self.discriminator(disc_input)
 
         disc_loss = F.binary_cross_entropy(
             disc_logits.squeeze(-1),
             disc_labels
         )
 
+        # return losses summed
         return mlm_loss + disc_loss

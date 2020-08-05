@@ -121,6 +121,12 @@ loss.backward()
 torch.save(discriminator, f'./pretrained-model.pt')
 ```
 
+## Testing
+
+```bash
+$ python setup.py test
+```
+
 ## Citations
 
 ```bibtex

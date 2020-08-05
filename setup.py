@@ -13,6 +13,13 @@ setup(
   install_requires=[
       'torch'
   ],
+  setup_requires=[
+      'pytest-runner'
+  ],
+  tests_require=[
+      'pytest',
+      'reformer-pytorch'
+  ],
   classifiers=[
       'Development Status :: 4 - Beta',
       'Intended Audience :: Developers',
