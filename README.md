@@ -64,10 +64,6 @@ loss.backward()
 # after much training, the discriminator should have improved
 
 torch.save(discriminator, f'./pretrained-model.pt')
-
-# after much training, the discriminator should have improved
-
-torch.save(discriminator, f'./pretrained-model.pt')
 ```
 
 ## Citations
