@@ -99,15 +99,26 @@ generator.pos_emb = discriminator.pos_emb
 
 # instantiate electra
 
-discriminator = nn.Sequential(discriminator, nn.Linear(512, 1), nn.Sigmoid())
+discriminator_with_adapter = nn.Sequential(discriminator, nn.Linear(512, 1), nn.Sigmoid())
 
 trainer = Electra(
     generator,
-    discriminator,
+    discriminator_with_adapter,
     mask_token_id = 2,          # the token id reserved for masking
     pad_token_id = 0,           # the token id for padding
     mask_prob = 0.15            # masking probability for masked language modeling
 )
+
+# train
+
+data = torch.randint(0, 20000, (1, 1024))
+
+loss = trainer(data)
+loss.backward()
+
+# after much training, the discriminator should have improved
+
+torch.save(discriminator, f'./pretrained-model.pt')
 ```
 
 ## Citations
