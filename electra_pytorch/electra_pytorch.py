@@ -47,7 +47,7 @@ class Electra(nn.Module):
         self,
         generator,
         discriminator,
-        discr_dim,
+        discr_dim = -1,
         discr_layer = -1,
         pad_token_id = 0,
         mask_token_id = 2,
@@ -55,12 +55,14 @@ class Electra(nn.Module):
         super().__init__()
 
         self.generator = generator
+        self.discriminator = discriminator
 
-        self.discriminator = nn.Sequential(
-            HiddenLayerExtractor(discriminator, layer = discr_layer),
-            nn.Linear(discr_dim, 1),
-            nn.Sigmoid()
-        )
+        if discr_dim > 0:
+            self.discriminator = nn.Sequential(
+                HiddenLayerExtractor(discriminator, layer = discr_layer),
+                nn.Linear(discr_dim, 1),
+                nn.Sigmoid()
+            )
 
         self.mask_prob = mask_prob
         self.pad_token_id = pad_token_id
