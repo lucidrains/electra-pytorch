@@ -15,7 +15,7 @@ setup(
     'pretraining'
   ],
   install_requires=[
-    'torch'
+    'torch>=1.1.0'
   ],
   setup_requires=[
     'pytest-runner'

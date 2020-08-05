@@ -4,6 +4,8 @@
 
 A simple wrapper for fast pretraining of language models as detailed in <a href="https://arxiv.org/abs/2003.10555">this paper</a>. The paper claims to be able to reach performances comparable to Roberta in a quarter of the compute.
 
+![Test](https://github.com/lucidrains/electra-pytorch/workflows/test/badge.svg)
+
 ## Install
 
 ```bash
