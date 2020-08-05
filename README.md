@@ -66,6 +66,50 @@ loss.backward()
 torch.save(discriminator, f'./pretrained-model.pt')
 ```
 
+If you would rather not have the framework auto-magically intercept the hidden output of the discriminator, you can pass in the discriminator (with the linear -> sigmoid) by yourself with the following.
+
+```python
+import torch
+from torch import nn
+from reformer_pytorch import ReformerLM
+
+from electra_pytorch.electra_pytorch import Electra
+
+# instantiate the generator and discriminator
+
+generator = ReformerLM(
+    num_tokens = 20000,
+    dim = 512,
+    depth = 1,
+    max_seq_len = 1024
+)
+
+discriminator = ReformerLM(
+    num_tokens = 20000,
+    dim = 512,
+    depth = 2,
+    max_seq_len = 1024,
+    return_embeddings = True
+)
+
+# weight tie the token and positional embeddings of generator and discriminator
+
+generator.token_emb = discriminator.token_emb
+generator.pos_emb = discriminator.pos_emb
+
+# instantiate electra
+
+discriminator = nn.Sequential(discriminator, nn.Linear(512, 1), nn.Sigmoid())
+
+trainer = Electra(
+    generator,
+    discriminator,
+    mask_token_id = 2,          # the token id reserved for masking
+    pad_token_id = 0,           # the token id for padding
+    mask_prob = 0.15            # masking probability for masked language modeling
+)
+```
+
 ## Citations
 
 ```bibtex
