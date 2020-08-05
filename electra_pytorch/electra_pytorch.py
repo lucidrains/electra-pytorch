@@ -93,7 +93,6 @@ class Electra(nn.Module):
         disc_input[mask_indices] = sampled.squeeze(-1)
 
         disc_logits = self.discriminator(disc_input)
-        
 
         disc_labels = (input != disc_input).float()
 
