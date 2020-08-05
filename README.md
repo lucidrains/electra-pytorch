@@ -50,6 +50,7 @@ trainer = Electra(
     discr_dim = 512,            # the embedding dimension of the discriminator
     discr_layer = 'reformer',   # the layer name in the discriminator, whose output would be used for predicting token is still the same or replaced
     mask_token_id = 2,          # the token id reserved for masking
+    pad_token_id = 0,           # the token id for padding
     mask_prob = 0.15            # masking probability for masked language modeling
 )
 
