@@ -26,7 +26,9 @@ def test_electra():
         generator,
         discriminator,
         discr_dim = 512,
-        discr_layer = 'reformer'
+        discr_layer = 'reformer',
+        pad_token_id = 1,
+        mask_ignore_token_ids = [2, 3]
     )
 
     data = torch.randint(0, 20000, (1, 1024))
@@ -61,7 +63,9 @@ def test_electra_without_magic():
 
     trainer = Electra(
         generator,
-        discriminator_with_adapter
+        discriminator_with_adapter,
+        pad_token_id = 1,
+        mask_ignore_token_ids = [2, 3]
     )
 
     data = torch.randint(0, 20000, (1, 1024))

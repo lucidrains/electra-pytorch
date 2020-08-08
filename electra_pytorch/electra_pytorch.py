@@ -1,3 +1,4 @@
+from functools import reduce
 import torch
 from torch import nn
 import torch.nn.functional as F
@@ -53,9 +54,10 @@ class Electra(nn.Module):
         discriminator,
         discr_dim = -1,
         discr_layer = -1,
-        pad_token_id = 0,
+        mask_prob = 0.15,
         mask_token_id = 2,
-        mask_prob = 0.15):
+        pad_token_id = 0,
+        mask_ignore_token_ids = []):
         super().__init__()
 
         self.generator = generator
@@ -71,13 +73,19 @@ class Electra(nn.Module):
         self.mask_prob = mask_prob
         self.pad_token_id = pad_token_id
         self.mask_token_id = mask_token_id
+        self.mask_ignore_token_ids = set([*mask_ignore_token_ids, pad_token_id])
 
     def forward(self, input):
         b, t = input.shape
 
         # generate mask for mlm pre-training of generator
         mask_prob = torch.zeros_like(input).float().uniform_(0, 1)
-        mask = (mask_prob < self.mask_prob) & (input != self.pad_token_id)
+        mask = (mask_prob < self.mask_prob)
+
+        # do not mask [pad] tokens, or any other tokens in the tokens designated to be excluded ([cls], [sep])
+        init_no_mask = torch.full_like(input, False, dtype=torch.bool)
+        no_mask = reduce(lambda acc, el: acc | (input == el), self.mask_ignore_token_ids, init_no_mask)
+        mask &= ~no_mask
 
         # mask input with mask tokens, set inverse of mask to padding tokens for labels
         masked_input = input.masked_fill(mask, self.mask_token_id)
@@ -87,8 +95,8 @@ class Electra(nn.Module):
         logits = self.generator(masked_input)
 
         mlm_loss = F.cross_entropy(
-            logits.reshape(b * t, -1),
-            gen_labels.view(-1),
+            logits.transpose(1, 2),
+            gen_labels,
             ignore_index = self.pad_token_id
         )
 
