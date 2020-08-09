@@ -49,6 +49,7 @@ generator.pos_emb = discriminator.pos_emb
 trainer = Electra(
     generator,
     discriminator,
+    num_tokens = 20000,         # number of tokens, needed for masked language pretraining
     discr_dim = 512,            # the embedding dimension of the discriminator
     discr_layer = 'reformer',   # the layer name in the discriminator, whose output would be used for predicting token is still the same or replaced
     mask_token_id = 2,          # the token id reserved for masking
@@ -106,6 +107,7 @@ discriminator_with_adapter = nn.Sequential(discriminator, nn.Linear(512, 1))
 trainer = Electra(
     generator,
     discriminator_with_adapter,
+    num_tokens = 20000,         # number of tokens, needed for masked language pretraining
     mask_token_id = 2,          # the token id reserved for masking
     pad_token_id = 0,           # the token id for padding
     mask_prob = 0.15            # masking probability for masked language modeling
