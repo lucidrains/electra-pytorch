@@ -25,6 +25,7 @@ def test_electra():
     trainer = Electra(
         generator,
         discriminator,
+        num_tokens = 20000,
         discr_dim = 512,
         discr_layer = 'reformer',
         pad_token_id = 1,
@@ -64,6 +65,7 @@ def test_electra_without_magic():
     trainer = Electra(
         generator,
         discriminator_with_adapter,
+        num_tokens = 20000,
         pad_token_id = 1,
         mask_ignore_token_ids = [2, 3]
     )

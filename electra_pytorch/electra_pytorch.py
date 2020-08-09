@@ -67,10 +67,13 @@ class Electra(nn.Module):
         self,
         generator,
         discriminator,
+        *,
+        num_tokens,
         discr_dim = -1,
         discr_layer = -1,
         mask_prob = 0.15,
         replace_prob = 0.85,
+        random_token_prob = 0.1,
         mask_token_id = 2,
         pad_token_id = 0,
         mask_ignore_token_ids = [],
@@ -86,13 +89,19 @@ class Electra(nn.Module):
                 nn.Linear(discr_dim, 1)
             )
 
+        # mlm related probabilities
         self.mask_prob = mask_prob
         self.replace_prob = replace_prob
 
+        self.num_tokens = num_tokens
+        self.random_token_prob = random_token_prob
+
+        # token ids
         self.pad_token_id = pad_token_id
         self.mask_token_id = mask_token_id
         self.mask_ignore_token_ids = set([*mask_ignore_token_ids, pad_token_id])
 
+        # sampling temperature
         self.temperature = temperature
 
     def forward(self, input):
@@ -101,16 +110,23 @@ class Electra(nn.Module):
         # generate mask for mlm pre-training of generator
         mask = prob_mask_like(input, self.mask_prob)
         replace_prob = prob_mask_like(input, self.replace_prob)
+        random_token_prob = prob_mask_like(input, self.random_token_prob)
 
         # do not mask [pad] tokens, or any other tokens in the tokens designated to be excluded ([cls], [sep])
         init_no_mask = torch.full_like(input, False, dtype=torch.bool)
         no_mask = reduce(lambda acc, el: acc | (input == el), self.mask_ignore_token_ids, init_no_mask)
-
         mask &= ~no_mask
-        mask_indices = torch.nonzero(mask, as_tuple=True)
 
-        # mask input with mask tokens, set inverse of mask to padding tokens for labels
-        masked_input = input.masked_fill(mask * replace_prob, self.mask_token_id)
+        # get mask indices
+        mask_indices = torch.nonzero(mask, as_tuple=True)
+        random_indices = torch.nonzero(random_token_prob, as_tuple=True)
+
+        # mask input with mask tokens with probability of `replace_prob` (keep tokens the same with probability 1 - replace_prob)
+        noised_input = input.clone()
+        noised_input[random_indices] = torch.randint(0, self.num_tokens, (random_token_prob.sum(),)).to(input)
+        masked_input = noised_input.masked_fill(mask * replace_prob, self.mask_token_id)
+
+        # set inverse of mask to padding tokens for labels
         gen_labels = input.masked_fill(~mask, self.pad_token_id)
 
         # get generator output and get mlm loss
