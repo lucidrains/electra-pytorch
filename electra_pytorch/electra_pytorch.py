@@ -15,6 +15,9 @@ def gumbel_noise(t):
 def gumbel_sample(t, temperature = 1.):
     return ((t / temperature) + gumbel_noise(t)).argmax(dim=-1)
 
+def prob_mask_like(t, prob):
+    return torch.zeros_like(t).float().uniform_(0, 1) < prob
+
 # hidden layer extractor class, for magically adding adapter to language model to be pretrained
 
 class HiddenLayerExtractor(nn.Module):
@@ -67,6 +70,7 @@ class Electra(nn.Module):
         discr_dim = -1,
         discr_layer = -1,
         mask_prob = 0.15,
+        replace_prob = 0.85,
         mask_token_id = 2,
         pad_token_id = 0,
         mask_ignore_token_ids = [],
@@ -83,6 +87,8 @@ class Electra(nn.Module):
             )
 
         self.mask_prob = mask_prob
+        self.replace_prob = replace_prob
+
         self.pad_token_id = pad_token_id
         self.mask_token_id = mask_token_id
         self.mask_ignore_token_ids = set([*mask_ignore_token_ids, pad_token_id])
@@ -93,8 +99,8 @@ class Electra(nn.Module):
         b, t = input.shape
 
         # generate mask for mlm pre-training of generator
-        mask_prob = torch.zeros_like(input).float().uniform_(0, 1)
-        mask = (mask_prob < self.mask_prob)
+        mask = prob_mask_like(input, self.mask_prob)
+        replace_prob = prob_mask_like(input, self.replace_prob)
 
         # do not mask [pad] tokens, or any other tokens in the tokens designated to be excluded ([cls], [sep])
         init_no_mask = torch.full_like(input, False, dtype=torch.bool)
@@ -104,7 +110,7 @@ class Electra(nn.Module):
         mask_indices = torch.nonzero(mask, as_tuple=True)
 
         # mask input with mask tokens, set inverse of mask to padding tokens for labels
-        masked_input = input.masked_fill(mask, self.mask_token_id)
+        masked_input = input.masked_fill(mask * replace_prob, self.mask_token_id)
         gen_labels = input.masked_fill(~mask, self.pad_token_id)
 
         # get generator output and get mlm loss
