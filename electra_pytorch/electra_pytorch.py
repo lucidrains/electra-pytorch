@@ -3,6 +3,18 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 
+# helpers
+
+def log(t, eps=1e-9):
+    return torch.log(t + eps)
+
+def gumbel_noise(t):
+    noise = torch.zeros_like(t).uniform_(0, 1)
+    return -log(-log(noise))
+
+def gumbel_sample(t, temperature = 1.):
+    return ((t / temperature) + gumbel_noise(t)).argmax(dim=-1)
+
 # hidden layer extractor class, for magically adding adapter to language model to be pretrained
 
 class HiddenLayerExtractor(nn.Module):
@@ -105,11 +117,11 @@ class Electra(nn.Module):
         sample_logits = logits[mask_indices].softmax(dim=-1)
 
         # sample
-        sampled = torch.multinomial(sample_logits, 1)
+        sampled = gumbel_sample(sample_logits)
 
         # scatter the sampled values back to the input
         disc_input = input.clone()
-        disc_input[mask_indices] = sampled.squeeze(-1)
+        disc_input[mask_indices] = sampled
 
         # generate discriminator labels, with replaced as True and original as False
         disc_labels = (input != disc_input).float()
