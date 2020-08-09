@@ -18,6 +18,11 @@ def gumbel_sample(t, temperature = 1.):
 def prob_mask_like(t, prob):
     return torch.zeros_like(t).float().uniform_(0, 1) < prob
 
+def mask_with_tokens(t, token_ids):
+    init_no_mask = torch.full_like(t, False, dtype=torch.bool)
+    mask = reduce(lambda acc, el: acc | (t == el), token_ids, init_no_mask)
+    return mask
+
 # hidden layer extractor class, for magically adding adapter to language model to be pretrained
 
 class HiddenLayerExtractor(nn.Module):
@@ -111,19 +116,23 @@ class Electra(nn.Module):
         mask = prob_mask_like(input, self.mask_prob)
         replace_prob = prob_mask_like(input, self.replace_prob)
         random_token_prob = prob_mask_like(input, self.random_token_prob)
+        random_tokens = torch.randint(0, self.num_tokens, input.shape, device=input.device)
 
         # do not mask [pad] tokens, or any other tokens in the tokens designated to be excluded ([cls], [sep])
-        init_no_mask = torch.full_like(input, False, dtype=torch.bool)
-        no_mask = reduce(lambda acc, el: acc | (input == el), self.mask_ignore_token_ids, init_no_mask)
+        # also do not include these special tokens in the tokens chosen at random
+        random_no_mask = mask_with_tokens(random_tokens, self.mask_ignore_token_ids)
+        no_mask        = mask_with_tokens(input, self.mask_ignore_token_ids)
+
         mask &= ~no_mask
+        random_token_prob &= ~random_no_mask
 
         # get mask indices
         mask_indices = torch.nonzero(mask, as_tuple=True)
         random_indices = torch.nonzero(random_token_prob, as_tuple=True)
 
         # mask input with mask tokens with probability of `replace_prob` (keep tokens the same with probability 1 - replace_prob)
-        noised_input = input.clone()
-        noised_input[random_indices] = torch.randint(0, self.num_tokens, (random_token_prob.sum(),)).to(input)
+        noised_input = input.clone().detach()
+        noised_input[random_indices] = random_tokens[random_indices]
         masked_input = noised_input.masked_fill(mask * replace_prob, self.mask_token_id)
 
         # set inverse of mask to padding tokens for labels
