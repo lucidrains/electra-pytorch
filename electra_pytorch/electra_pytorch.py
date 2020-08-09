@@ -124,10 +124,10 @@ class Electra(nn.Module):
 
         # scatter the sampled values back to the input
         disc_input = input.clone()
-        disc_input[mask_indices] = sampled
+        disc_input[mask_indices] = sampled.detach()
 
         # generate discriminator labels, with replaced as True and original as False
-        disc_labels = (input != disc_input).float()
+        disc_labels = (input != disc_input).float().detach()
 
         # get discriminator predictions of replaced / original
         non_padded_indices = torch.nonzero(input != self.pad_token_id, as_tuple=True)
