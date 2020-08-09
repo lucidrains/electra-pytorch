@@ -68,7 +68,7 @@ loss.backward()
 torch.save(discriminator, f'./pretrained-model.pt')
 ```
 
-If you would rather not have the framework auto-magically intercept the hidden output of the discriminator, you can pass in the discriminator (with the linear -> sigmoid) by yourself with the following.
+If you would rather not have the framework auto-magically intercept the hidden output of the discriminator, you can pass in the discriminator (with the extra linear [dim x 1]) by yourself with the following.
 
 ```python
 import torch
@@ -101,7 +101,7 @@ generator.pos_emb = discriminator.pos_emb
 
 # instantiate electra
 
-discriminator_with_adapter = nn.Sequential(discriminator, nn.Linear(512, 1), nn.Sigmoid())
+discriminator_with_adapter = nn.Sequential(discriminator, nn.Linear(512, 1))
 
 trainer = Electra(
     generator,

@@ -66,8 +66,7 @@ class Electra(nn.Module):
         if discr_dim > 0:
             self.discriminator = nn.Sequential(
                 HiddenLayerExtractor(discriminator, layer = discr_layer),
-                nn.Linear(discr_dim, 1),
-                nn.Sigmoid()
+                nn.Linear(discr_dim, 1)
             )
 
         self.mask_prob = mask_prob
@@ -85,7 +84,9 @@ class Electra(nn.Module):
         # do not mask [pad] tokens, or any other tokens in the tokens designated to be excluded ([cls], [sep])
         init_no_mask = torch.full_like(input, False, dtype=torch.bool)
         no_mask = reduce(lambda acc, el: acc | (input == el), self.mask_ignore_token_ids, init_no_mask)
+
         mask &= ~no_mask
+        mask_indices = torch.nonzero(mask, as_tuple=True)
 
         # mask input with mask tokens, set inverse of mask to padding tokens for labels
         masked_input = input.masked_fill(mask, self.mask_token_id)
@@ -101,7 +102,6 @@ class Electra(nn.Module):
         )
 
         # use mask from before to select logits that need sampling
-        mask_indices = torch.nonzero(mask, as_tuple=True)
         sample_logits = logits[mask_indices].softmax(dim=-1)
 
         # sample
@@ -115,11 +115,14 @@ class Electra(nn.Module):
         disc_labels = (input != disc_input).float()
 
         # get discriminator predictions of replaced / original
+        non_padded_indices = torch.nonzero(input != self.pad_token_id, as_tuple=True)
+
         disc_logits = self.discriminator(disc_input)
+        disc_probs = disc_logits.sigmoid().squeeze(-1)
 
         disc_loss = F.binary_cross_entropy(
-            disc_logits.squeeze(-1),
-            disc_labels
+            disc_probs[non_padded_indices],
+            disc_labels[non_padded_indices]
         )
 
         # return losses summed
