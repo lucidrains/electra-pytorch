@@ -69,7 +69,8 @@ class Electra(nn.Module):
         mask_prob = 0.15,
         mask_token_id = 2,
         pad_token_id = 0,
-        mask_ignore_token_ids = []):
+        mask_ignore_token_ids = [],
+        temperature = 1.):
         super().__init__()
 
         self.generator = generator
@@ -85,6 +86,8 @@ class Electra(nn.Module):
         self.pad_token_id = pad_token_id
         self.mask_token_id = mask_token_id
         self.mask_ignore_token_ids = set([*mask_ignore_token_ids, pad_token_id])
+
+        self.temperature = temperature
 
     def forward(self, input):
         b, t = input.shape
@@ -117,7 +120,7 @@ class Electra(nn.Module):
         sample_logits = logits[mask_indices].softmax(dim=-1)
 
         # sample
-        sampled = gumbel_sample(sample_logits)
+        sampled = gumbel_sample(sample_logits, temperature = self.temperature)
 
         # scatter the sampled values back to the input
         disc_input = input.clone()
