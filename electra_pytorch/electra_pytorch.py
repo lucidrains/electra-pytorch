@@ -121,6 +121,12 @@ class Electra(nn.Module):
         no_mask = mask_with_tokens(input, self.mask_ignore_token_ids)
         mask &= ~no_mask
 
+        # make sure tokens masked do not exceed (mask_prob + 0.005) probability, in line with google's electra code
+        num_possible_masked_tokens = (~no_mask).sum(dim=-1)
+        max_mask_num_tokens = num_possible_masked_tokens * (self.mask_prob + 0.005)
+        excess_tokens_mask = mask.cumsum(dim=-1) > max_mask_num_tokens[:, None]
+        mask &= ~excess_tokens_mask
+
         # get mask indices
         mask_indices = torch.nonzero(mask, as_tuple=True)
 
