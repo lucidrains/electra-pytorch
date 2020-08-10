@@ -152,7 +152,7 @@ class Electra(nn.Module):
         )
 
         # use mask from before to select logits that need sampling
-        sample_logits = logits[mask_indices].softmax(dim=-1)
+        sample_logits = logits[mask_indices]
 
         # sample
         sampled = gumbel_sample(sample_logits, temperature = self.temperature)
