@@ -78,7 +78,7 @@ class Electra(nn.Module):
         discr_layer = -1,
         mask_prob = 0.15,
         replace_prob = 0.85,
-        random_token_prob = 0.1,
+        random_token_prob = 0.05,
         mask_token_id = 2,
         pad_token_id = 0,
         mask_ignore_token_ids = [],
