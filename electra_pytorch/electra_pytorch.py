@@ -130,8 +130,6 @@ class Electra(nn.Module):
     def forward(self, input):
         b, t = input.shape
 
-        replace_prob = prob_mask_like(input, self.replace_prob)
-
         # do not mask [pad] tokens, or any other tokens in the tokens designated to be excluded ([cls], [sep])
         # also do not include these special tokens in the tokens chosen at random
         no_mask = mask_with_tokens(input, self.mask_ignore_token_ids)
@@ -153,6 +151,7 @@ class Electra(nn.Module):
             masked_input[random_indices] = random_tokens[random_indices]
 
         # [mask] input
+        replace_prob = prob_mask_like(input, self.replace_prob)
         masked_input = masked_input.masked_fill(mask * replace_prob, self.mask_token_id)
 
         # set inverse of mask to padding tokens for labels
