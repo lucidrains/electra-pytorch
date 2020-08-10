@@ -1,4 +1,6 @@
+import math
 from functools import reduce
+
 import torch
 from torch import nn
 import torch.nn.functional as F
@@ -22,6 +24,22 @@ def mask_with_tokens(t, token_ids):
     init_no_mask = torch.full_like(t, False, dtype=torch.bool)
     mask = reduce(lambda acc, el: acc | (t == el), token_ids, init_no_mask)
     return mask
+
+def get_mask_subset_with_prob(mask, prob):
+    batch, seq_len, device = *mask.shape, mask.device
+    max_masked = math.ceil(prob * seq_len)
+
+    num_tokens = mask.sum(dim=-1, keepdim=True)
+    mask_excess = (mask.cumsum(dim=-1) > (num_tokens * prob).ceil())
+    mask_excess = mask_excess[:, :max_masked]
+
+    rand = torch.rand((batch, seq_len), device=device).masked_fill(~mask, -1e9)
+    _, sampled_indices = rand.topk(max_masked, dim=-1)
+    sampled_indices = (sampled_indices + 1).masked_fill_(mask_excess, 0)
+
+    new_mask = torch.zeros((batch, seq_len + 1), device=device)
+    new_mask.scatter_(-1, sampled_indices, 1)
+    return new_mask[:, 1:].bool()
 
 # hidden layer extractor class, for magically adding adapter to language model to be pretrained
 
@@ -112,20 +130,12 @@ class Electra(nn.Module):
     def forward(self, input):
         b, t = input.shape
 
-        # generate mask for mlm pre-training of generator
-        mask = prob_mask_like(input, self.mask_prob)
         replace_prob = prob_mask_like(input, self.replace_prob)
 
         # do not mask [pad] tokens, or any other tokens in the tokens designated to be excluded ([cls], [sep])
         # also do not include these special tokens in the tokens chosen at random
         no_mask = mask_with_tokens(input, self.mask_ignore_token_ids)
-        mask &= ~no_mask
-
-        # make sure tokens masked do not exceed (mask_prob + 0.005) probability, in line with google's electra code
-        num_possible_masked_tokens = (~no_mask).sum(dim=-1)
-        max_mask_num_tokens = num_possible_masked_tokens * (self.mask_prob + 0.005)
-        excess_tokens_mask = mask.cumsum(dim=-1) > max_mask_num_tokens[:, None]
-        mask &= ~excess_tokens_mask
+        mask = get_mask_subset_with_prob(~no_mask, self.mask_prob)
 
         # get mask indices
         mask_indices = torch.nonzero(mask, as_tuple=True)
