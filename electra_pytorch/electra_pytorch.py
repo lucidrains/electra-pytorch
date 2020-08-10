@@ -115,25 +115,29 @@ class Electra(nn.Module):
         # generate mask for mlm pre-training of generator
         mask = prob_mask_like(input, self.mask_prob)
         replace_prob = prob_mask_like(input, self.replace_prob)
-        random_token_prob = prob_mask_like(input, self.random_token_prob)
-        random_tokens = torch.randint(0, self.num_tokens, input.shape, device=input.device)
 
         # do not mask [pad] tokens, or any other tokens in the tokens designated to be excluded ([cls], [sep])
         # also do not include these special tokens in the tokens chosen at random
-        random_no_mask = mask_with_tokens(random_tokens, self.mask_ignore_token_ids)
-        no_mask        = mask_with_tokens(input, self.mask_ignore_token_ids)
-
+        no_mask = mask_with_tokens(input, self.mask_ignore_token_ids)
         mask &= ~no_mask
-        random_token_prob &= ~random_no_mask
 
         # get mask indices
         mask_indices = torch.nonzero(mask, as_tuple=True)
-        random_indices = torch.nonzero(random_token_prob, as_tuple=True)
 
         # mask input with mask tokens with probability of `replace_prob` (keep tokens the same with probability 1 - replace_prob)
-        noised_input = input.clone().detach()
-        noised_input[random_indices] = random_tokens[random_indices]
-        masked_input = noised_input.masked_fill(mask * replace_prob, self.mask_token_id)
+        masked_input = input.clone().detach()
+
+        # if random token probability > 0 for mlm
+        if self.random_token_prob > 0:
+            random_token_prob = prob_mask_like(input, self.random_token_prob)
+            random_tokens = torch.randint(0, self.num_tokens, input.shape, device=input.device)
+            random_no_mask = mask_with_tokens(random_tokens, self.mask_ignore_token_ids)
+            random_token_prob &= ~random_no_mask
+            random_indices = torch.nonzero(random_token_prob, as_tuple=True)
+            masked_input[random_indices] = random_tokens[random_indices]
+
+        # [mask] input
+        masked_input = masked_input.masked_fill(mask * replace_prob, self.mask_token_id)
 
         # set inverse of mask to padding tokens for labels
         gen_labels = input.masked_fill(~mask, self.pad_token_id)
