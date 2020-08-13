@@ -127,7 +127,7 @@ class Electra(nn.Module):
         # sampling temperature
         self.temperature = temperature
 
-    def forward(self, input):
+    def forward(self, input, return_only_mlm_loss = False):
         b, t = input.shape
 
         # do not mask [pad] tokens, or any other tokens in the tokens designated to be excluded ([cls], [sep])
@@ -165,6 +165,10 @@ class Electra(nn.Module):
             gen_labels,
             ignore_index = self.pad_token_id
         )
+
+        # return only mlm loss if flag set to true
+        if return_only_mlm_loss:
+            return mlm_loss
 
         # use mask from before to select logits that need sampling
         sample_logits = logits[mask_indices]
