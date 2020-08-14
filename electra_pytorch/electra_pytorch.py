@@ -127,9 +127,7 @@ class Electra(nn.Module):
         # sampling temperature
         self.temperature = temperature
 
-    def forward(self, input, return_only_mlm_loss = False):
-        b, t = input.shape
-
+    def forward(self, input):
         # do not mask [pad] tokens, or any other tokens in the tokens designated to be excluded ([cls], [sep])
         # also do not include these special tokens in the tokens chosen at random
         no_mask = mask_with_tokens(input, self.mask_ignore_token_ids)
@@ -166,10 +164,6 @@ class Electra(nn.Module):
             ignore_index = self.pad_token_id
         )
 
-        # return only mlm loss if flag set to true
-        if return_only_mlm_loss:
-            return mlm_loss
-
         # use mask from before to select logits that need sampling
         sample_logits = logits[mask_indices]
 
@@ -187,9 +181,9 @@ class Electra(nn.Module):
         non_padded_indices = torch.nonzero(input != self.pad_token_id, as_tuple=True)
 
         disc_logits = self.discriminator(disc_input)
-        disc_probs = disc_logits.sigmoid().squeeze(-1)
+        disc_probs = disc_logits.squeeze(-1)
 
-        disc_loss = F.binary_cross_entropy(
+        disc_loss = F.binary_cross_entropy_with_logits(
             disc_probs[non_padded_indices],
             disc_labels[non_padded_indices]
         )
