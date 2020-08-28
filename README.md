@@ -115,8 +115,8 @@ trainer = Electra(
 
 data = torch.randint(0, 20000, (1, 1024))
 
-loss = trainer(data)
-loss.backward()
+results = trainer(data)
+results.loss.backward()
 
 # after much training, the discriminator should have improved
 
