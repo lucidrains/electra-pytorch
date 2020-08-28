@@ -33,8 +33,8 @@ def test_electra():
     )
 
     data = torch.randint(0, 20000, (1, 1024))
-    loss = trainer(data)
-    loss.backward()
+    results = trainer(data)
+    results.loss.backward()
 
 def test_electra_without_magic():
     generator = ReformerLM(
@@ -71,5 +71,5 @@ def test_electra_without_magic():
     )
 
     data = torch.randint(0, 20000, (1, 1024))
-    loss = trainer(data)
-    loss.backward()
+    results = trainer(data)
+    results.loss.backward()

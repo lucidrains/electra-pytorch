@@ -1,9 +1,22 @@
 import math
 from functools import reduce
+from collections import namedtuple
 
 import torch
 from torch import nn
 import torch.nn.functional as F
+
+# constants
+
+Results = namedtuple('Results', [
+    'loss',
+    'mlm_loss',
+    'disc_loss',
+    'gen_acc',
+    'disc_acc',
+    'disc_labels',
+    'disc_predictions'
+])
 
 # helpers
 
@@ -134,7 +147,7 @@ class Electra(nn.Module):
         self.gen_weight = gen_weight
 
 
-    def forward(self, input, input_mask, segment_ids):
+    def forward(self, input, **kwargs):
         b, t = input.shape
 
         replace_prob = prob_mask_like(input, self.replace_prob)
@@ -166,7 +179,7 @@ class Electra(nn.Module):
         gen_labels = input.masked_fill(~mask, self.pad_token_id)
 
         # get generator output and get mlm loss
-        logits = self.generator(input_ids=masked_input, attention_mask=input_mask, token_type_ids=segment_ids)
+        logits = self.generator(masked_input, **kwargs)
 
         mlm_loss = F.cross_entropy(
             logits.transpose(1, 2),
@@ -191,7 +204,10 @@ class Electra(nn.Module):
         non_padded_indices = torch.nonzero(input != self.pad_token_id, as_tuple=True)
 
         # get discriminator output and binary cross entropy loss
-        disc_logits = self.discriminator(input_ids=disc_input, attention_mask=input_mask, token_type_ids=segment_ids)
+        disc_logits = self.discriminator(disc_input, **kwargs)
+
+        if len(disc_logits.shape) == 3:
+            disc_logits = disc_logits.squeeze(dim=-1)
 
         disc_loss = F.binary_cross_entropy_with_logits(
             disc_logits[non_padded_indices],
@@ -200,9 +216,9 @@ class Electra(nn.Module):
 
         with torch.no_grad():
             gen_predictions = torch.argmax(logits, dim=-1)
-            disc_predictions = torch.round((torch.sign(disc_logits.squeeze()) + 1.0) * 0.5)
+            disc_predictions = torch.round((torch.sign(disc_logits) + 1.0) * 0.5)
             gen_acc = (gen_labels[mask] == gen_predictions[mask]).float().mean()
             disc_acc = 0.5 * (disc_labels[mask] == disc_predictions[mask]).float().mean() + 0.5 * (disc_labels[~mask] == disc_predictions[~mask]).float().mean()
 
         # return weighted sum of losses
-        return self.gen_weight * mlm_loss + self.disc_weight * disc_loss, mlm_loss, disc_loss, gen_acc, disc_acc, disc_labels, disc_predictions
+        return Results(self.gen_weight * mlm_loss + self.disc_weight * disc_loss, mlm_loss, disc_loss, gen_acc, disc_acc, disc_labels, disc_predictions)
