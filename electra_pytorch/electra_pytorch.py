@@ -90,8 +90,8 @@ class Electra(nn.Module):
         self,
         generator,
         discriminator,
-        *,
         num_tokens,
+        *,
         discr_dim = -1,
         discr_layer = -1,
         mask_prob = 0.15,
@@ -100,6 +100,8 @@ class Electra(nn.Module):
         mask_token_id = 2,
         pad_token_id = 0,
         mask_ignore_token_ids = [],
+        disc_weight = 50.,
+        gen_weight = 1.,
         temperature = 1.):
         super().__init__()
 
@@ -127,7 +129,16 @@ class Electra(nn.Module):
         # sampling temperature
         self.temperature = temperature
 
-    def forward(self, input):
+        # loss weights
+        self.disc_weight = disc_weight
+        self.gen_weight = gen_weight
+
+
+    def forward(self, input, input_mask, segment_ids):
+        b, t = input.shape
+
+        replace_prob = prob_mask_like(input, self.replace_prob)
+
         # do not mask [pad] tokens, or any other tokens in the tokens designated to be excluded ([cls], [sep])
         # also do not include these special tokens in the tokens chosen at random
         no_mask = mask_with_tokens(input, self.mask_ignore_token_ids)
@@ -149,14 +160,13 @@ class Electra(nn.Module):
             masked_input[random_indices] = random_tokens[random_indices]
 
         # [mask] input
-        replace_prob = prob_mask_like(input, self.replace_prob)
         masked_input = masked_input.masked_fill(mask * replace_prob, self.mask_token_id)
 
         # set inverse of mask to padding tokens for labels
         gen_labels = input.masked_fill(~mask, self.pad_token_id)
 
         # get generator output and get mlm loss
-        logits = self.generator(masked_input)
+        logits = self.generator(input_ids=masked_input, attention_mask=input_mask, token_type_ids=segment_ids)
 
         mlm_loss = F.cross_entropy(
             logits.transpose(1, 2),
@@ -180,13 +190,19 @@ class Electra(nn.Module):
         # get discriminator predictions of replaced / original
         non_padded_indices = torch.nonzero(input != self.pad_token_id, as_tuple=True)
 
-        disc_logits = self.discriminator(disc_input)
-        disc_probs = disc_logits.squeeze(-1)
+        # get discriminator output and binary cross entropy loss
+        disc_logits = self.discriminator(input_ids=disc_input, attention_mask=input_mask, token_type_ids=segment_ids)
 
         disc_loss = F.binary_cross_entropy_with_logits(
-            disc_probs[non_padded_indices],
+            disc_logits[non_padded_indices],
             disc_labels[non_padded_indices]
         )
 
-        # return losses summed
-        return mlm_loss + disc_loss
+        with torch.no_grad():
+            gen_predictions = torch.argmax(logits, dim=-1)
+            disc_predictions = torch.round((torch.sign(disc_logits.squeeze()) + 1.0) * 0.5)
+            gen_acc = (gen_labels[mask] == gen_predictions[mask]).float().mean()
+            disc_acc = 0.5 * (disc_labels[mask] == disc_predictions[mask]).float().mean() + 0.5 * (disc_labels[~mask] == disc_predictions[~mask]).float().mean()
+
+        # return weighted sum of losses
+        return self.gen_weight * mlm_loss + self.disc_weight * disc_loss, mlm_loss, disc_loss, gen_acc, disc_acc, disc_labels, disc_predictions

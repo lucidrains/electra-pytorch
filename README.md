@@ -131,6 +131,44 @@ torch.save(discriminator, f'./pretrained-model.pt')
 $ python setup.py test
 ```
 
+## Pre-Training on OpenWebText
+
+1. Download the [OpenWebText](https://github.com/jcpeterson/openwebtext) dataset.
+
+```bash
+$ mkdir data
+$ cd data
+$ pip3 install gdown
+$ gdown --id 1EA5V0oetDCOke7afsktL_JDQ-ETtNOvx
+$ tar -xf openwebtext.tar.xz
+$ wget https://storage.googleapis.com/electra-data/vocab.txt
+$ cd ..
+```
+
+2. Tokenize dataset.
+
+```bash
+$ python3 pretraining/openwebtext/preprocess.py
+```
+
+3. Pre-train.
+
+```bash
+$ python3 pretraining/openwebtext/pretrain.py
+```
+
+4. Download GLUE dataset.
+
+```bash
+$ python3 examples/glue/download.py 
+```
+
+5. Fine-tune on the MRPC sub-task of the GLUE benchmark.
+
+```bash
+$ python3 examples/glue/run.py --model_name_or_path output/yyyy-mm-dd-hh-mm-ss/ckpt/200000
+```
+
 ## Citations
 
 ```bibtex
