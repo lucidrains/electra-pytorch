@@ -479,7 +479,7 @@ def load_and_cache_examples(args, task, tokenizer, evaluate=False):
 #   --overwrite_output_dir \
 #   --cache_dir cache_glue_bert
 
-def main(task='MRPC', seed=42):
+def main(task='MRPC', seed=42, ckpt='output/pretrain/2020-08-28-02-41-37/ckpt/60000'):
     parser = argparse.ArgumentParser()
 
     # Required parameters
@@ -496,7 +496,12 @@ def main(task='MRPC', seed=42):
     )
     parser.add_argument(
         "--model_name_or_path",
-        default='output/pretrain/2020-08-28-01-46-00/ckpt/10000/',
+        default=ckpt,
+        type=str,
+    )
+    parser.add_argument(
+        "--vocab_path",
+        default='data/vocab.txt',
         type=str,
     )
     parser.add_argument(
@@ -617,14 +622,8 @@ def main(task='MRPC', seed=42):
         ptvsd.wait_for_attach()
 
     # Setup CUDA, GPU & distributed training
-    if args.local_rank == -1 or args.no_cuda:
-        device = torch.device("cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu")
-        args.n_gpu = 0 if args.no_cuda else torch.cuda.device_count()
-    else:  # Initializes the distributed backend which will take care of sychronizing nodes/GPUs
-        torch.cuda.set_device(args.local_rank)
-        device = torch.device("cuda", args.local_rank)
-        torch.distributed.init_process_group(backend="nccl")
-        args.n_gpu = 1
+    device = torch.device("cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu")
+    args.n_gpu = 1
     args.device = device
 
     # Setup logging
@@ -673,8 +672,9 @@ def main(task='MRPC', seed=42):
         cache_dir=args.cache_dir if args.cache_dir else None,
     )
 
+
     from pretraining.openwebtext.dataset import new_tokenizer
-    tokenizer = wrap_tokenizer(new_tokenizer('data/vocab.txt'), pad_token='[PAD]')
+    tokenizer = wrap_tokenizer(new_tokenizer(args.vocab_path), pad_token='[PAD]')
 
     if args.local_rank == 0:
         torch.distributed.barrier()  # Make sure only the first process in distributed training will download model & vocab
@@ -708,7 +708,9 @@ def main(task='MRPC', seed=42):
         torch.save(args, os.path.join(args.output_dir, "training_args.bin"))
 
         # Load a trained model and vocabulary that you have fine-tuned
-        model = AutoModelForSequenceClassification.from_pretrained(args.output_dir)
+        model = model_to_save
+        # TODO(nijkamp): we ignore model serialization
+        # model = AutoModelForSequenceClassification.from_pretrained(args.output_dir)
         # tokenizer = AutoTokenizer.from_pretrained(args.output_dir)
         model.to(args.device)
 
@@ -728,7 +730,8 @@ def main(task='MRPC', seed=42):
             global_step = checkpoint.split("-")[-1] if len(checkpoints) > 1 else ""
             prefix = checkpoint.split("/")[-1] if checkpoint.find("checkpoint") != -1 else ""
 
-            model = AutoModelForSequenceClassification.from_pretrained(checkpoint)
+            # TODO(nijkamp): we ignore model serialization
+            # model = AutoModelForSequenceClassification.from_pretrained(checkpoint)
             model.to(args.device)
             result = evaluate(args, model, tokenizer, prefix=prefix)
             result = dict((k + "_{}".format(global_step), v) for k, v in result.items())
