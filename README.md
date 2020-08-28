@@ -131,7 +131,7 @@ torch.save(discriminator, f'./pretrained-model.pt')
 $ python setup.py test
 ```
 
-## Pre-Training on OpenWebText
+## Pre-Training
 
 1. Download the [OpenWebText](https://github.com/jcpeterson/openwebtext) dataset.
 
