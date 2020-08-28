@@ -2,7 +2,7 @@
 
 ## Electra - Pytorch
 
-A simple wrapper for fast pretraining of language models as detailed in <a href="https://arxiv.org/abs/2003.10555">this paper</a>. It speeds up training (compared to usual masked language modeling) so one can reach performances comparable to Roberta in a quarter of the compute.
+A simple working wrapper for fast pretraining of language models as detailed in <a href="https://arxiv.org/abs/2003.10555">this paper</a>. It speeds up training (in comparison to normal masked language modeling) by a factor of 4x, and eventually reaches better performance if trained for even longer. Special thanks to <a href="https://github.com/enijkamp">Eric Nijkamp</a> for taking the time to replicate the results for GLUE.
 
 ## Install
 
@@ -21,41 +21,49 @@ from reformer_pytorch import ReformerLM
 
 from electra_pytorch import Electra
 
-# instantiate the generator and discriminator
+# (1) instantiate the generator and discriminator, making sure that the generator is roughly a quarter to a half of the size of the discriminator
 
 generator = ReformerLM(
     num_tokens = 20000,
-    dim = 512,
-    depth = 1,
+    emb_dim = 128,
+    dim = 256,              # smaller hidden dimension
+    heads = 4,              # less heads
+    ff_mult = 2,            # smaller feed forward intermediate dimension
+    dim_head = 64,
+    depth = 12,
     max_seq_len = 1024
 )
 
 discriminator = ReformerLM(
     num_tokens = 20000,
-    dim = 512,
-    depth = 2,
+    emb_dim = 128,
+    dim = 1024,
+    dim_head = 64,
+    heads = 16,
+    depth = 12,
+    ff_mult = 4,
     max_seq_len = 1024
 )
 
-# weight tie the token and positional embeddings of generator and discriminator
+# (2) weight tie the token and positional embeddings of generator and discriminator
 
 generator.token_emb = discriminator.token_emb
 generator.pos_emb = discriminator.pos_emb
+# weight tie any other embeddings if available, token type embeddings, etc.
 
-# instantiate electra
+# (3) instantiate electra
 
 trainer = Electra(
     generator,
     discriminator,
-    num_tokens = 20000,         # number of tokens, needed for masked language pretraining
-    discr_dim = 512,            # the embedding dimension of the discriminator
+    discr_dim = 1024,           # the embedding dimension of the discriminator
     discr_layer = 'reformer',   # the layer name in the discriminator, whose output would be used for predicting token is still the same or replaced
     mask_token_id = 2,          # the token id reserved for masking
     pad_token_id = 0,           # the token id for padding
     mask_prob = 0.15            # masking probability for masked language modeling
 )
 
-# train
+# (4) train
 
 data = torch.randint(0, 20000, (1, 1024))
 
@@ -76,42 +84,50 @@ from reformer_pytorch import ReformerLM
 
 from electra_pytorch.electra_pytorch import Electra
 
-# instantiate the generator and discriminator
+# (1) instantiate the generator and discriminator, making sure that the generator is roughly a quarter to a half of the size of the discriminator
 
 generator = ReformerLM(
     num_tokens = 20000,
-    dim = 512,
-    depth = 1,
+    emb_dim = 128,
+    dim = 256,              # smaller hidden dimension
+    heads = 4,              # less heads
+    ff_mult = 2,            # smaller feed forward intermediate dimension
+    dim_head = 64,
+    depth = 12,
     max_seq_len = 1024
 )
 
 discriminator = ReformerLM(
     num_tokens = 20000,
-    dim = 512,
-    depth = 2,
+    emb_dim = 128,
+    dim = 1024,
+    dim_head = 64,
+    heads = 16,
+    depth = 12,
+    ff_mult = 4,
     max_seq_len = 1024,
     return_embeddings = True
 )
 
-# weight tie the token and positional embeddings of generator and discriminator
+# (2) weight tie the token and positional embeddings of generator and discriminator
 
 generator.token_emb = discriminator.token_emb
 generator.pos_emb = discriminator.pos_emb
+# weight tie any other embeddings if available, token type embeddings, etc.
 
-# instantiate electra
+# (3) instantiate electra
 
-discriminator_with_adapter = nn.Sequential(discriminator, nn.Linear(512, 1))
+discriminator_with_adapter = nn.Sequential(discriminator, nn.Linear(1024, 1))
 
 trainer = Electra(
     generator,
     discriminator_with_adapter,
-    num_tokens = 20000,         # number of tokens, needed for masked language pretraining
     mask_token_id = 2,          # the token id reserved for masking
     pad_token_id = 0,           # the token id for padding
     mask_prob = 0.15            # masking probability for masked language modeling
 )
 
-# train
+# (4) train
 
 data = torch.randint(0, 20000, (1, 1024))
 
@@ -123,10 +139,9 @@ results.loss.backward()
 torch.save(discriminator, f'./pretrained-model.pt')
 ```
 
-## Details for successful training
+## Important details for successful training
 
-The generator's number of layers should be a quarter to at most one half of the discriminator's number of layers during training. Any greater and the generator will be too good and the adversarial game collapses. As an example, if the discriminator is a 12 layer attention network, the generator should have anywhere from 3-6 layers at most.
-
+The generator should be roughly a quarter to at most one half of the discriminator's size for effective training. Any greater and the generator will be too good and the adversarial game collapses. This was done by reducing the hidden dimension, feed forward hidden dimension, and number of attention heads in the paper.
 
 ## Testing
 

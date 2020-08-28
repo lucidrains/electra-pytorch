@@ -103,13 +103,13 @@ class Electra(nn.Module):
         self,
         generator,
         discriminator,
-        num_tokens,
         *,
+        num_tokens = None,
         discr_dim = -1,
         discr_layer = -1,
         mask_prob = 0.15,
         replace_prob = 0.85,
-        random_token_prob = 0.05,
+        random_token_prob = 0.,
         mask_token_id = 2,
         pad_token_id = 0,
         mask_ignore_token_ids = [],
@@ -165,6 +165,8 @@ class Electra(nn.Module):
 
         # if random token probability > 0 for mlm
         if self.random_token_prob > 0:
+            assert self.num_tokens is not None, 'Number of tokens (num_tokens) must be passed to Electra for randomizing tokens during masked language modeling'
+
             random_token_prob = prob_mask_like(input, self.random_token_prob)
             random_tokens = torch.randint(0, self.num_tokens, input.shape, device=input.device)
             random_no_mask = mask_with_tokens(random_tokens, self.mask_ignore_token_ids)
