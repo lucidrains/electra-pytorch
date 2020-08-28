@@ -123,6 +123,11 @@ results.loss.backward()
 torch.save(discriminator, f'./pretrained-model.pt')
 ```
 
+## Details for successful training
+
+The generator's number of layers should be a quarter to at most one half of the discriminator's number of layers during training. Any greater and the generator will be too good and the adversarial game collapses. As an example, if the discriminator is a 12 layer attention network, the generator should have anywhere from 3-6 layers at most.
+
+
 ## Testing
 
 ```bash
