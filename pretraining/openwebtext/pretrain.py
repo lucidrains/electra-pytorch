@@ -23,8 +23,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class Args:
-    # data_dir: arg.Str = 'data/openwebtext_features'
-    data_dir: arg.Str = '/export/home/data/openwebtext_features'
+    data_dir: arg.Str = 'data/openwebtext_features'
     data_vocab_file: arg.Str = 'data/vocab.txt'
     data_n_tensors_per_file: arg.Int = 2048
     data_max_seq_length: arg.Int = 128
