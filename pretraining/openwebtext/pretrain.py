@@ -198,7 +198,7 @@ def train(rank, args):
         optimizer.zero_grad()
 
         with torch.cuda.amp.autocast(enabled=args.gpu_mixed_precision):
-            loss, loss_mlm, loss_disc, acc_gen, acc_disc, disc_labels, disc_pred = model(input_ids, input_mask, segment_ids)
+            loss, loss_mlm, loss_disc, acc_gen, acc_disc, disc_labels, disc_pred = model(input_ids, attention_mask=input_mask, token_type_ids=segment_ids)
 
         scaler.scale(loss).backward()
         scaler.unscale_(optimizer)
