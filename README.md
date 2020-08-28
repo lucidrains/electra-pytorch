@@ -149,7 +149,7 @@ The generator should be roughly a quarter to at most one half of the discriminat
 $ python setup.py test
 ```
 
-## Pre-Training
+## Training
 
 1. Download the [OpenWebText](https://github.com/jcpeterson/openwebtext) dataset.
 
