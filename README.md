@@ -60,7 +60,8 @@ trainer = Electra(
     discr_layer = 'reformer',   # the layer name in the discriminator, whose output would be used for predicting token is still the same or replaced
     mask_token_id = 2,          # the token id reserved for masking
     pad_token_id = 0,           # the token id for padding
-    mask_prob = 0.15            # masking probability for masked language modeling
+    mask_prob = 0.15,           # masking probability for masked language modeling
+    mask_ignore_token_ids = []  # ids of tokens to ignore for mask modeling ex. (cls, sep)
 )
 
 # (4) train
@@ -124,7 +125,8 @@ trainer = Electra(
     discriminator_with_adapter,
     mask_token_id = 2,          # the token id reserved for masking
     pad_token_id = 0,           # the token id for padding
-    mask_prob = 0.15            # masking probability for masked language modeling
+    mask_prob = 0.15,           # masking probability for masked language modeling
+    mask_ignore_token_ids = []  # ids of tokens to ignore for mask modeling ex. (cls, sep)
 )
 
 # (4) train
