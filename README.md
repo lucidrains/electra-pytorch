@@ -168,25 +168,25 @@ $ cd ..
 2. Tokenize dataset.
 
 ```bash
-$ python3 pretraining/openwebtext/preprocess.py
+$ python pretraining/openwebtext/preprocess.py
 ```
 
 3. Pre-train.
 
 ```bash
-$ python3 pretraining/openwebtext/pretrain.py
+$ python pretraining/openwebtext/pretrain.py
 ```
 
 4. Download GLUE dataset.
 
 ```bash
-$ python3 examples/glue/download.py 
+$ python examples/glue/download.py 
 ```
 
 5. Fine-tune on the MRPC sub-task of the GLUE benchmark.
 
 ```bash
-$ python3 examples/glue/run.py --model_name_or_path output/yyyy-mm-dd-hh-mm-ss/ckpt/200000
+$ python examples/glue/run.py --model_name_or_path output/yyyy-mm-dd-hh-mm-ss/ckpt/200000
 ```
 
 ## Citations
