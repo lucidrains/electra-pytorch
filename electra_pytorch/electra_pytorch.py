@@ -207,15 +207,14 @@ class Electra(nn.Module):
 
         # get discriminator output and binary cross entropy loss
         disc_logits = self.discriminator(disc_input, **kwargs)
-
-        if len(disc_logits.shape) == 3:
-            disc_logits = disc_logits.squeeze(dim=-1)
+        disc_logits = disc_logits.reshape_as(disc_labels)
 
         disc_loss = F.binary_cross_entropy_with_logits(
             disc_logits[non_padded_indices],
             disc_labels[non_padded_indices]
         )
 
+        # gather metrics
         with torch.no_grad():
             gen_predictions = torch.argmax(logits, dim=-1)
             disc_predictions = torch.round((torch.sign(disc_logits) + 1.0) * 0.5)
