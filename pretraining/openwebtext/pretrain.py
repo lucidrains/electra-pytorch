@@ -1,5 +1,10 @@
 import os
 import sys
+
+dir_path = os.path.dirname(os.path.realpath(__file__))
+parent_dir_path = os.path.abspath(os.path.join(dir_path, os.pardir))
+sys.path.insert(0, parent_dir_path)
+
 import random
 import logging
 from time import time
@@ -13,8 +18,8 @@ from torch.utils.data.dataloader import DataLoader
 
 from electra_pytorch import Electra
 
-from pretraining.openwebtext import arg
-from pretraining.openwebtext.dataset import load_owt, new_tokenizer, wrap_example_builder
+from openwebtext import arg
+from openwebtext.dataset import load_owt, new_tokenizer, wrap_example_builder
 
 logger = logging.getLogger(__name__)
 
