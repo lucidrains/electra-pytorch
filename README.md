@@ -83,7 +83,7 @@ import torch
 from torch import nn
 from reformer_pytorch import ReformerLM
 
-from electra_pytorch.electra_pytorch import Electra
+from electra_pytorch import Electra
 
 # (1) instantiate the generator and discriminator, making sure that the generator is roughly a quarter to a half of the size of the discriminator
 
