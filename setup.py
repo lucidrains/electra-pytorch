@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 setup(
   name = 'electra-pytorch',
   packages = find_packages(),
-  version = '0.1.1',
+  version = '0.1.2',
   license='MIT',
   description = 'Electra - Pytorch',
   author = 'Erik Nijkamp, Phil Wang',

@@ -163,6 +163,13 @@ class Electra(nn.Module):
         # mask input with mask tokens with probability of `replace_prob` (keep tokens the same with probability 1 - replace_prob)
         masked_input = input.clone().detach()
 
+        # set inverse of mask to padding tokens for labels
+        gen_labels = input.masked_fill(~mask, self.pad_token_id)
+
+        # clone the mask, for potential modification if random tokens are involved
+        # not to be mistakened for the mask above, which is for all tokens, whether not replaced nor replaced with random tokens
+        masking_mask = mask.clone()
+
         # if random token probability > 0 for mlm
         if self.random_token_prob > 0:
             assert self.num_tokens is not None, 'Number of tokens (num_tokens) must be passed to Electra for randomizing tokens during masked language modeling'
@@ -171,14 +178,13 @@ class Electra(nn.Module):
             random_tokens = torch.randint(0, self.num_tokens, input.shape, device=input.device)
             random_no_mask = mask_with_tokens(random_tokens, self.mask_ignore_token_ids)
             random_token_prob &= ~random_no_mask
-            random_indices = torch.nonzero(random_token_prob, as_tuple=True)
-            masked_input[random_indices] = random_tokens[random_indices]
+            masked_input = torch.where(random_token_prob, random_tokens, masked_input)
+
+            # remove random token prob mask from masking mask
+            masking_mask = masking_mask & ~random_token_prob
 
         # [mask] input
-        masked_input = masked_input.masked_fill(mask * replace_prob, self.mask_token_id)
-
-        # set inverse of mask to padding tokens for labels
-        gen_labels = input.masked_fill(~mask, self.pad_token_id)
+        masked_input = masked_input.masked_fill(masking_mask * replace_prob, self.mask_token_id)
 
         # get generator output and get mlm loss
         logits = self.generator(masked_input, **kwargs)
