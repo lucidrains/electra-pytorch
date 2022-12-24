@@ -15,9 +15,8 @@ import numpy as np
 import torch
 import torch.utils.data
 
-from pretraining.openwebtext import arg
-from pretraining.openwebtext import tokenization
-
+import arg
+import tokenization
 
 logger = logging.getLogger(__name__)
 
