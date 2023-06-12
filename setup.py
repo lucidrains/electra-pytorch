@@ -16,7 +16,7 @@ setup(
   ],
   install_requires=[
     'torch>=1.6.0',
-    'transformers==3.0.2',
+    'transformers==4.30.0',
     'scipy',
     'sklearn'
   ],
